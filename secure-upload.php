@@ -14,6 +14,11 @@ if (!file_exists(__DIR__ . '/data')) {
     mkdir(__DIR__ . '/data', 0755, true);
 }
 
+// Initialize data file if it doesn't exist
+if (!file_exists(DATA_FILE)) {
+    file_put_contents(DATA_FILE, json_encode([], JSON_PRETTY_PRINT));
+}
+
 // Clean expired files
 cleanExpiredFiles();
 
@@ -35,11 +40,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Validate file type
         $allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 
                         'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                        'text/plain'];
+                        'text/plain', 'application/x-pdf'];
         
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $mimeType = finfo_file($finfo, $file['tmp_name']);
         finfo_close($finfo);
+
+        // Allow uploads even if mime type detection fails (check extension)
+        $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'doc', 'docx', 'txt'];
+        
+        if (!in_array($extension, $allowedExtensions)) {
+            throw new Exception('File type not allowed. Allowed: ' . implode(', ', $allowedExtensions));
+        }
 
         // Generate unique file ID
         $fileId = bin2hex(random_bytes(16));
